@@ -79,6 +79,7 @@ bool   runtime_pos_log = false, pcd_save_en = false, time_sync_en = false, extri
 float res_last[100000] = {0.0};
 float DET_RANGE = 300.0f;
 const float MOV_THRESHOLD = 1.5f;
+const double GLOBAL_LOCALIZATION_MAX_ICP_FITNESS = 0.25;
 double time_diff_lidar_to_imu = 0.0;
 
 mutex mtx_buffer;
@@ -848,6 +849,8 @@ void global_localization()
                 if (localization_id == -1)
                 {
                     init_check = 0;
+                    init_ids.clear();
+                    init_poses.clear();
                     continue;
                 }
 
@@ -881,6 +884,20 @@ void global_localization()
                 icp.setInputSource(current_init_pc);
                 icp.setInputTarget(current_loop_pc);
                 icp.align(*unused);
+                const bool icp_converged = icp.hasConverged();
+                const double icp_fitness = icp.getFitnessScore();
+                RCLCPP_INFO(
+                    LOGGER,
+                    "Global localization ICP converged=%s fitness=%.6f",
+                    icp_converged ? "true" : "false",
+                    icp_fitness);
+                if (!icp_converged || icp_fitness > GLOBAL_LOCALIZATION_MAX_ICP_FITNESS)
+                {
+                    init_check = 0;
+                    init_ids.clear();
+                    init_poses.clear();
+                    continue;
+                }
                 T_corr_current = icp.getFinalTransformation().cast<double>();
                 pcl::transformPointCloud(*current_init_pc, *current_init_pc, T_corr_current);
                 T_corr = (T_corr_current * T_corr).eval();
