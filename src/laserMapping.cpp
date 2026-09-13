@@ -840,8 +840,10 @@ void global_localization()
 
                 scManager.makeAndSaveScancontextAndKeys(*current_init_pc);
                 // 获得全局定位ID
-                int localization_id = scManager.detectLoopClosureID().first;
-                float yaw_init = scManager.detectLoopClosureID().second;
+                auto localization_result = scManager.detectLoopClosureID();
+                int localization_id = localization_result.first;
+                float yaw_init = localization_result.second;
+                scManager.dropBackScancontextAndKeys();
 
                 if (localization_id == -1)
                 {
@@ -897,7 +899,6 @@ void global_localization()
 
                 init_poses.push_back(T);
                 init_ids.push_back(current_init_id);
-                scManager.dropBackScancontextAndKeys();
                 init_check++;
             }
             else
